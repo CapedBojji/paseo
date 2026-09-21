@@ -1983,6 +1983,10 @@ export const ja: TranslationResources = {
       title: "エディター",
       vimKeybindings: "Vim キーバインド",
       vimHint: "Web とデスクトップのソースファイルに適用されます。",
+      openInNeovim: "エクスプローラーのファイルを Neovim で開く",
+      openInNeovimHint: "ファイル選択時に Neovim ターミナルを開くか再利用します。",
+      openInNeovimFailed: "Neovim でファイルを開けませんでした。",
+      openInNeovimRequiresHost: "Neovim で開くには Paseo ホストを更新してください。",
     },
     notifications: {
       title: "通知",

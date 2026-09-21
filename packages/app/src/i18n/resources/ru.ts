@@ -1996,6 +1996,10 @@ export const ru: TranslationResources = {
       title: "Редактор",
       vimKeybindings: "Сочетания клавиш Vim",
       vimHint: "Применяется к исходным файлам в веб- и настольной версии.",
+      openInNeovim: "Открывать файлы Проводника в Neovim",
+      openInNeovimHint: "Открывает или использует повторно терминал Neovim при выборе файла.",
+      openInNeovimFailed: "Не удалось открыть файл в Neovim.",
+      openInNeovimRequiresHost: "Обновите хост Paseo, чтобы открывать файлы в Neovim.",
     },
     notifications: {
       title: "Уведомления",

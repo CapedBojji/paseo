@@ -101,6 +101,7 @@ import type {
   AgentRewindResponseMessage,
   ListTerminalsResponse,
   CreateTerminalResponse,
+  EditorNeovimOpenResponse,
   SubscribeTerminalResponse,
   SubscribeTerminalRequest,
   CloseItemsResponse,
@@ -5669,6 +5670,18 @@ export class DaemonClient {
       message,
       responseType: "create_terminal_response",
       options: { skipQueue: true },
+    });
+  }
+
+  async openFileInNeovim(input: {
+    workspaceId: string;
+    cwd: string;
+    path: string;
+    line?: number;
+  }): Promise<EditorNeovimOpenResponse["payload"]> {
+    return this.sendCorrelatedSessionRequest({
+      message: { type: "editor.neovim.open.request", ...input },
+      responseType: "editor.neovim.open.response",
     });
   }
 

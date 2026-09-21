@@ -66,7 +66,7 @@ export function useOpenAgentTabLabels(input: {
           try {
             await client.updateAgent(agentId, { labels: { [label]: "true" } });
           } catch (error) {
-            console.warn("[OpenAgentTabLabels] Failed to mark open subagent tab", {
+            console.warn("[OpenAgentTabLabels] Failed to mark open agent tab", {
               error,
               agentId,
             });

@@ -1973,6 +1973,10 @@ export const ko: TranslationResources = {
       title: "편집기",
       vimKeybindings: "Vim 키 바인딩",
       vimHint: "웹 및 데스크톱의 소스 파일에 적용됩니다.",
+      openInNeovim: "탐색기 파일을 Neovim에서 열기",
+      openInNeovimHint: "파일을 선택하면 Neovim 터미널을 열거나 재사용합니다.",
+      openInNeovimFailed: "Neovim에서 파일을 열 수 없습니다.",
+      openInNeovimRequiresHost: "Neovim에서 열려면 Paseo 호스트를 업데이트하세요.",
     },
     notifications: {
       title: "알림",

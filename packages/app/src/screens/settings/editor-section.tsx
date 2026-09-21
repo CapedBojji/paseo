@@ -13,6 +13,10 @@ export function EditorSection() {
     (vimKeybindings: boolean) => void updateSettings({ vimKeybindings }),
     [updateSettings],
   );
+  const handleExplorerOpenChange = useCallback(
+    (openExplorerFilesInNeovim: boolean) => void updateSettings({ openExplorerFilesInNeovim }),
+    [updateSettings],
+  );
   return (
     <SettingsSection title={t("settings.editor.title")}>
       <View style={settingsStyles.card}>
@@ -26,6 +30,18 @@ export function EditorSection() {
             onValueChange={handleChange}
             accessibilityLabel={t("settings.editor.vimKeybindings")}
             testID="vim-keybindings-toggle"
+          />
+        </View>
+        <View style={settingsStyles.row}>
+          <View style={settingsStyles.rowContent}>
+            <Text style={settingsStyles.rowTitle}>{t("settings.editor.openInNeovim")}</Text>
+            <Text style={settingsStyles.rowHint}>{t("settings.editor.openInNeovimHint")}</Text>
+          </View>
+          <Switch
+            value={settings.openExplorerFilesInNeovim}
+            onValueChange={handleExplorerOpenChange}
+            accessibilityLabel={t("settings.editor.openInNeovim")}
+            testID="open-explorer-files-in-neovim-toggle"
           />
         </View>
       </View>

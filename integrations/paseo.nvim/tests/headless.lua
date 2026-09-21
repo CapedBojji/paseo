@@ -55,7 +55,9 @@ assert(prompt:find("File: " .. buffer_path, 1, true), "prompt includes its file 
 assert(prompt:find("Lines 3-4:\nKeep scope narrow.", 1, true), "prompt includes live first range")
 assert(prompt:find("Lines 6-6:\nDo not change public APIs.", 1, true), "prompt includes live second range")
 
-equal(paseo.build_list_argv(), { "paseo-test", "ls", "--global", "--json" }, "list argv")
+equal(paseo.build_list_argv(), { "paseo-test", "ls", "--open-tabs", "--json" }, "list argv")
+paseo.setup({ keys = false, cli = { "paseo-test" } })
+assert(vim.fn.exists(":PaseoInstruct") == 2, "setup can be called more than once")
 equal(paseo.build_send_argv("agent-123", "/tmp/prompt.md"), {
   "paseo-test",
   "send",

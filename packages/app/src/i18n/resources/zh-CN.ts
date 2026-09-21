@@ -1942,6 +1942,10 @@ export const zhCN: TranslationResources = {
       title: "编辑器",
       vimKeybindings: "Vim 键位",
       vimHint: "适用于网页和桌面端的源文件。",
+      openInNeovim: "在 Neovim 中打开资源管理器文件",
+      openInNeovimHint: "选择文件时打开或复用 Neovim 终端。",
+      openInNeovimFailed: "无法在 Neovim 中打开文件。",
+      openInNeovimRequiresHost: "请更新 Paseo 主机以在 Neovim 中打开文件。",
     },
     notifications: {
       title: "通知",

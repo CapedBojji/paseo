@@ -2016,6 +2016,10 @@ export const fr: TranslationResources = {
       title: "Éditeur",
       vimKeybindings: "Raccourcis Vim",
       vimHint: "S’applique aux fichiers source sur le web et le bureau.",
+      openInNeovim: "Ouvrir les fichiers de l’Explorateur dans Neovim",
+      openInNeovimHint: "Ouvre ou réutilise un terminal Neovim quand vous sélectionnez un fichier.",
+      openInNeovimFailed: "Impossible d’ouvrir le fichier dans Neovim.",
+      openInNeovimRequiresHost: "Mettez à jour l’hôte Paseo pour ouvrir les fichiers dans Neovim.",
     },
     notifications: {
       title: "Notifications",

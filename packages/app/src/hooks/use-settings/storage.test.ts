@@ -177,6 +177,22 @@ describe("loadAppSettingsFromStorage", () => {
     expect(result.workspaceTitleSource).toBe("title");
   });
 
+  it("keeps Explorer file opening in Paseo by default", async () => {
+    const result = await loadAppSettingsFromStorage(makeDeps());
+
+    expect(result.openExplorerFilesInNeovim).toBe(false);
+  });
+
+  it("loads the Neovim Explorer preference", async () => {
+    const deps = makeDeps({
+      storage: createInMemoryKeyValueStorage({
+        [APP_SETTINGS_KEY]: JSON.stringify({ openExplorerFilesInNeovim: true }),
+      }),
+    });
+
+    expect((await loadAppSettingsFromStorage(deps)).openExplorerFilesInNeovim).toBe(true);
+  });
+
   it("enables the chat outline by default", async () => {
     const deps = makeDeps();
 

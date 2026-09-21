@@ -1996,6 +1996,10 @@ export const ptBR: TranslationResources = {
       title: "Editor",
       vimKeybindings: "Atalhos do Vim",
       vimHint: "Aplica-se a arquivos-fonte na web e no desktop.",
+      openInNeovim: "Abrir arquivos do Explorador no Neovim",
+      openInNeovimHint: "Abre ou reutiliza um terminal Neovim ao selecionar um arquivo.",
+      openInNeovimFailed: "Não foi possível abrir o arquivo no Neovim.",
+      openInNeovimRequiresHost: "Atualize o host do Paseo para abrir arquivos no Neovim.",
     },
     notifications: {
       title: "Notificações",

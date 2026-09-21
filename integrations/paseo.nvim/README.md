@@ -26,13 +26,13 @@ require("paseo").setup()
 
 `<leader>pi` opens a multiline floating editor for the current line. In Visual mode it anchors the instruction to the selected line range. Save with `<C-s>` and cancel with `q` or `Esc`.
 
-| Command | Action |
-| --- | --- |
-| `:PaseoInstruct` | Add or edit an instruction at the current line or command range |
-| `:PaseoInstructDelete` | Delete an instruction at the current line or command range |
-| `:PaseoInstructNext` / `:PaseoInstructPrev` | Jump between instructions |
-| `:PaseoInstructList` | Show all current-buffer instructions |
-| `:PaseoSend` | Choose an existing Paseo agent or start a new one |
+| Command                                     | Action                                                          |
+| ------------------------------------------- | --------------------------------------------------------------- |
+| `:PaseoInstruct`                            | Add or edit an instruction at the current line or command range |
+| `:PaseoInstructDelete`                      | Delete an instruction at the current line or command range      |
+| `:PaseoInstructNext` / `:PaseoInstructPrev` | Jump between instructions                                       |
+| `:PaseoInstructList`                        | Show all current-buffer instructions                            |
+| `:PaseoSend`                                | Choose an existing Paseo agent or start a new one               |
 
 The plugin provides `<Plug>` mappings for every action: `<Plug>(paseo-instruct)`, `<Plug>(paseo-instruct-delete)`, `<Plug>(paseo-instruct-next)`, `<Plug>(paseo-instruct-prev)`, `<Plug>(paseo-instruct-list)`, and `<Plug>(paseo-send)`.
 
@@ -55,7 +55,7 @@ require("paseo").setup({ keys = false })
 
 ## Paseo requirements
 
-Authoring instructions needs only Neovim 0.10 or newer. Sending needs a reachable Paseo CLI and `PASEO_WORKSPACE_ID` in Neovim's environment. `:PaseoSend` lists non-archived Paseo agents as JSON, then sends an existing target with `paseo send --no-wait --prompt-file … <id>`. Selecting **New agent** runs `paseo run --background --workspace "$PASEO_WORKSPACE_ID" <prompt>`.
+Authoring instructions needs only Neovim 0.10 or newer. Sending needs a reachable Paseo CLI and `PASEO_WORKSPACE_ID` in Neovim's environment. `:PaseoSend` lists agents currently open in this workspace's Paseo tabs, then sends an existing target with `paseo send --no-wait --prompt-file … <id>`. Selecting **New agent** runs `paseo run --background --workspace "$PASEO_WORKSPACE_ID" <prompt>`.
 
 Instructions are never deleted after a send attempt, including if listing, starting, or sending fails.
 

@@ -80,6 +80,7 @@ import {
   type WorkspaceTabTarget,
 } from "@/workspace-tabs/model";
 import { useSettings } from "@/hooks/use-settings";
+import { useHostFeature } from "@/runtime/host-features";
 import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import { buildWorkspaceKeyboardHandlerId } from "@/keyboard/handler-id";
 import type {
@@ -1853,7 +1854,36 @@ function WorkspaceScreenContent({
     [openTab],
   );
   const openInSidePane = useSettings((settings) => settings.openInSidePane);
+  const openExplorerFilesInNeovim = useSettings((settings) => settings.openExplorerFilesInNeovim);
+  const supportsNeovimEditor = useHostFeature(normalizedServerId, "neovimEditor");
   const pullRequestOpenLocation = useSettings((settings) => settings.pullRequestOpenLocation);
+  const openExplorerFileInNeovim = useStableEvent(async (path: string) => {
+    if (!client || !persistenceKey || !workspaceDirectory) {
+      toast.error(t("common.errors.daemonClientUnavailable"));
+      return;
+    }
+    try {
+      const result = await client.openFileInNeovim({
+        workspaceId: normalizedWorkspaceId,
+        cwd: workspaceDirectory,
+        path,
+      });
+      if (result.error || !result.terminalId) {
+        throw new Error(result.error ?? t("settings.editor.openInNeovimFailed"));
+      }
+      invalidateTerminals();
+      if (isMobile) {
+        showMobileAgent();
+      }
+      openWorkspaceTabFocused(
+        persistenceKey,
+        { kind: "terminal", terminalId: result.terminalId },
+        FOCUSED_PANE_PLACEMENT,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("settings.editor.openInNeovimFailed"));
+    }
+  });
   const focusWorkspaceTab = useWorkspaceLayoutStore((state) => state.focusTab);
   const selectWorkspaceTabInPane = useWorkspaceLayoutStore((state) => state.selectTabInPane);
   const closeWorkspaceTab = useWorkspaceLayoutStore((state) => state.closeTab);
@@ -3532,6 +3562,14 @@ function WorkspaceScreenContent({
         },
         onOpenPreferredTarget: (target, source) => {
           if (!persistenceKey) return;
+          if (source === "explorerFiles" && target.kind === "file" && openExplorerFilesInNeovim) {
+            if (!supportsNeovimEditor) {
+              toast.error(t("settings.editor.openInNeovimRequiresHost"));
+              return;
+            }
+            openExplorerFileInNeovim(target.path);
+            return;
+          }
           const tabId = openPreferredWorkspacePreview({
             isCompact: isMobile,
             workspaceKey: persistenceKey,
@@ -3595,6 +3633,11 @@ function WorkspaceScreenContent({
       canRenderDesktopPaneSplits,
       openImportSheet,
       openInSidePane,
+      openExplorerFileInNeovim,
+      openExplorerFilesInNeovim,
+      supportsNeovimEditor,
+      t,
+      toast,
       isMobile,
       requestFileNavigation,
       revealWorkspaceChildTab,

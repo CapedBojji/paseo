@@ -440,24 +440,27 @@ export function buildDarkSemanticColors(tint: DarkThemeConfig) {
 // Dark tint definitions
 // ---------------------------------------------------------------------------
 
-// Paseo — subtle teal-green tint (default)
+// Paseo — Conductor-inspired warm charcoal (default). The near-black brown surfaces,
+// low-contrast dividers, coral syntax, and restrained cool status colors keep the
+// workspace chrome quiet while source code remains easy to scan.
 const paseoDarkColors = buildDarkSemanticColors({
-  surface0: "#181B1A",
-  surface1: "#1E2120",
-  surface2: "#272A29",
-  surface3: "#434645",
-  surface4: "#595B5B",
-  surfaceDiffEmpty: "#252827",
-  surfaceSidebar: "#141716",
-  foregroundMuted: "#A1A5A4",
-  foregroundExtraMuted: "#717574",
-  border: "#252B2A",
-  borderAccent: "#2F3534",
-  accent: "#20744A",
-  accentBright: "#7ccba0",
-  destructive: "#c64f43", // warm red, hue ~7 — reads as red (not pink) against the green tint
-  terminalBlack: "#141716",
-  terminalBrightBlack: "#434645",
+  surface0: "#161312",
+  surface1: "#1D1A19",
+  surface2: "#25211F",
+  surface3: "#302B28",
+  surface4: "#45403C",
+  surfaceDiffEmpty: "#1A1716",
+  surfaceSidebar: "#1B1817",
+  foreground: "#D2CDCA",
+  foregroundMuted: "#A29A95",
+  foregroundExtraMuted: "#746D68",
+  border: "#2A2624",
+  borderAccent: "#393330",
+  accent: "#B95F65",
+  accentBright: "#E57A7C",
+  destructive: "#C95F5B",
+  terminalBlack: "#1B1817",
+  terminalBrightBlack: "#45403C",
 });
 
 // Zinc — neutral gray, no tint

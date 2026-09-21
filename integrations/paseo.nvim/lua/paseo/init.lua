@@ -319,7 +319,7 @@ local function prefixed(arguments)
 end
 
 function M.build_list_argv()
-  return prefixed({ "ls", "--global", "--json" })
+  return prefixed({ "ls", "--open-tabs", "--json" })
 end
 
 function M.build_send_argv(agent_id, prompt_file)
@@ -445,14 +445,14 @@ end
 local function define_commands()
   api.nvim_create_user_command("PaseoInstruct", function(options)
     M.instruct({ line1 = options.line1, line2 = options.line2 })
-  end, { range = true, desc = "Add or edit a Paseo instruction" })
+  end, { range = true, desc = "Add or edit a Paseo instruction", force = true })
   api.nvim_create_user_command("PaseoInstructDelete", function(options)
     M.delete({ line1 = options.line1, line2 = options.line2 })
-  end, { range = true, desc = "Delete a Paseo instruction" })
-  api.nvim_create_user_command("PaseoInstructNext", M.next, { desc = "Jump to next Paseo instruction" })
-  api.nvim_create_user_command("PaseoInstructPrev", M.prev, { desc = "Jump to previous Paseo instruction" })
-  api.nvim_create_user_command("PaseoInstructList", M.list, { desc = "List Paseo instructions" })
-  api.nvim_create_user_command("PaseoSend", M.send, { desc = "Send current-buffer instructions to Paseo" })
+  end, { range = true, desc = "Delete a Paseo instruction", force = true })
+  api.nvim_create_user_command("PaseoInstructNext", M.next, { desc = "Jump to next Paseo instruction", force = true })
+  api.nvim_create_user_command("PaseoInstructPrev", M.prev, { desc = "Jump to previous Paseo instruction", force = true })
+  api.nvim_create_user_command("PaseoInstructList", M.list, { desc = "List Paseo instructions", force = true })
+  api.nvim_create_user_command("PaseoSend", M.send, { desc = "Send current-buffer instructions to Paseo", force = true })
 end
 
 local function map_plugs()

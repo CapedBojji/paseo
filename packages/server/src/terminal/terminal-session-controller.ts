@@ -6,6 +6,7 @@ import type {
 import type {
   CaptureTerminalRequest,
   CreateTerminalRequest,
+  EditorNeovimOpenRequest,
   KillTerminalRequest,
   ListTerminalsRequest,
   RenameTerminalRequest,
@@ -17,6 +18,7 @@ import type {
   UnsubscribeTerminalRequest,
   UnsubscribeTerminalsRequest,
 } from "../server/messages.js";
+import { resolve } from "node:path";
 import { killTerminalsForWorkspace as killWorkspaceTerminals } from "../server/workspace-archive-service.js";
 import {
   TerminalStreamOpcode,
@@ -40,6 +42,7 @@ import type { TerminalManager, TerminalsChangedEvent } from "./terminal-manager.
 import { applyTerminalSize } from "./terminal-size-ownership.js";
 import type { TerminalActivity } from "@getpaseo/protocol/terminal-activity";
 import { terminalSubscriptionKey } from "@getpaseo/protocol/terminal-subscription-key";
+import { getNeovimEditorService, type NeovimEditorService } from "../editor/neovim/service.js";
 
 const MAX_TERMINAL_STREAM_SLOTS = 256;
 
@@ -99,6 +102,7 @@ export interface TerminalSessionControllerOptions {
   // Bytes queued on the client transport but not yet sent, or null when the
   // transport exposes no backpressure signal (e.g. the multiplexed relay socket).
   getClientBufferedAmount?: (source: object) => number | null;
+  neovimEditor?: NeovimEditorService | null;
 }
 
 interface TerminalWorkspaceRef {
@@ -116,6 +120,7 @@ type TerminalDispatchableMessage =
   | UnsubscribeTerminalsRequest
   | ListTerminalsRequest
   | CreateTerminalRequest
+  | EditorNeovimOpenRequest
   | SubscribeTerminalRequest
   | UnsubscribeTerminalRequest
   | TerminalInput
@@ -128,6 +133,7 @@ const TERMINAL_MESSAGE_TYPES: ReadonlySet<TerminalDispatchableMessage["type"]> =
   "unsubscribe_terminals_request",
   "list_terminals_request",
   "create_terminal_request",
+  "editor.neovim.open.request",
   "subscribe_terminal_request",
   "unsubscribe_terminal_request",
   "terminal_input",
@@ -146,6 +152,7 @@ export class TerminalSessionController {
   private readonly listTerminalWorkspaceRoots: () => Promise<readonly string[]>;
   private readonly clientSupportsWrapReflow: (source: object) => boolean;
   private readonly getClientBufferedAmount: (source: object) => number | null;
+  private readonly neovimEditor: NeovimEditorService | null;
 
   private readonly subscribedDirectories = new Map<string, TerminalDirectorySubscription>();
   private unsubscribeTerminalsChanged: (() => void) | null = null;
@@ -164,6 +171,13 @@ export class TerminalSessionController {
       (async () => (await this.listTerminalWorkspaceRefs()).map((workspace) => workspace.cwd));
     this.clientSupportsWrapReflow = options.clientSupportsWrapReflow ?? (() => false);
     this.getClientBufferedAmount = options.getClientBufferedAmount ?? (() => 0);
+    if (options.neovimEditor !== undefined) {
+      this.neovimEditor = options.neovimEditor;
+    } else {
+      this.neovimEditor = this.terminalManager
+        ? getNeovimEditorService(this.terminalManager)
+        : null;
+    }
   }
 
   start(): void {
@@ -215,6 +229,8 @@ export class TerminalSessionController {
         return this.handleListTerminalsRequest(msg);
       case "create_terminal_request":
         return this.handleCreateTerminalRequest(msg);
+      case "editor.neovim.open.request":
+        return this.handleEditorNeovimOpenRequest(msg);
       case "subscribe_terminal_request":
         return this.handleSubscribeTerminalRequest(msg, ownership);
       case "unsubscribe_terminal_request":
@@ -605,6 +621,49 @@ export class TerminalSessionController {
           requestId: msg.requestId,
         },
       });
+    }
+  }
+
+  private async handleEditorNeovimOpenRequest(msg: EditorNeovimOpenRequest): Promise<void> {
+    const respond = (terminalId: string | null, created: boolean, error: string | null): void => {
+      this.emit({
+        type: "editor.neovim.open.response",
+        payload: { requestId: msg.requestId, terminalId, created, error },
+      });
+    };
+
+    if (!this.neovimEditor) {
+      respond(null, false, "Terminal manager not available");
+      return;
+    }
+
+    const workspaces = await this.listTerminalWorkspaceRefs();
+    const workspace = workspaces.find((candidate) => candidate.workspaceId === msg.workspaceId);
+    if (!workspace || !this.isSamePath(workspace.cwd, msg.cwd)) {
+      respond(null, false, "Workspace is not active or does not match the requested directory");
+      return;
+    }
+
+    const absolutePath = resolve(msg.cwd, msg.path);
+    if (!this.isPathWithinRoot(msg.cwd, absolutePath)) {
+      respond(null, false, "File path is outside the workspace");
+      return;
+    }
+
+    try {
+      const result = await this.neovimEditor.open({
+        cwd: msg.cwd,
+        workspaceId: msg.workspaceId,
+        path: absolutePath,
+        ...(msg.line ? { line: msg.line } : {}),
+      });
+      respond(result.terminalId, result.created, null);
+    } catch (error) {
+      this.sessionLogger.error(
+        { err: error, workspaceId: msg.workspaceId, path: msg.path },
+        "Failed to open file in Neovim",
+      );
+      respond(null, false, error instanceof Error ? error.message : String(error));
     }
   }
 

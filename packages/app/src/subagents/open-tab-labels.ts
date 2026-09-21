@@ -13,11 +13,7 @@ export function getAgentTabsNeedingOpenLabel(input: {
       continue;
     }
     const agent = input.getAgent(tab.target.agentId);
-    if (
-      agent?.parentAgentId &&
-      agent.labels[input.label] !== "true" &&
-      !input.pendingAgentIds.has(agent.id)
-    ) {
+    if (agent && agent.labels[input.label] !== "true" && !input.pendingAgentIds.has(agent.id)) {
       agentIds.add(agent.id);
     }
   }

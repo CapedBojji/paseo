@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildAgentLsFetchOptions } from "./ls.js";
+import { getOpenAgentTabLabel } from "@getpaseo/protocol/agent-labels";
+import { buildAgentLsFetchOptions, filterAgentsByOpenTab } from "./ls.js";
 
 describe("buildAgentLsFetchOptions", () => {
   it("fetches active agents by default", () => {
@@ -57,5 +58,19 @@ describe("buildAgentLsFetchOptions", () => {
         thinkingOptionId: "medium",
       },
     });
+  });
+});
+
+describe("filterAgentsByOpenTab", () => {
+  it("keeps only agents with an open Paseo tab on any client", () => {
+    const label = getOpenAgentTabLabel("client-1");
+    const agents = [
+      { id: "open", labels: { [label]: "true" } },
+      { id: "closed", labels: { [label]: "false" } },
+      { id: "unlabelled", labels: {} },
+    ];
+
+    expect(filterAgentsByOpenTab(agents, true)).toEqual([agents[0]]);
+    expect(filterAgentsByOpenTab(agents, false)).toEqual(agents);
   });
 });

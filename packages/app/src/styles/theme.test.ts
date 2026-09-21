@@ -80,6 +80,17 @@ describe("Sidebar interaction surfaces", () => {
   });
 });
 
+describe("Built-in dark theme", () => {
+  it("uses the Conductor-inspired warm charcoal workspace palette", () => {
+    expect(darkTheme.colors).toMatchObject({
+      surface0: "#161312",
+      surfaceSidebar: "#1B1817",
+      accent: "#B95F65",
+      foreground: "#D2CDCA",
+    });
+  });
+});
+
 describe("Built-in light theme", () => {
   it("preserves its authored aliases and terminal contrast through the semantic builder", () => {
     expect(lightTheme.colors).toMatchObject({

@@ -4,6 +4,7 @@ import { connectToDaemon } from "../../utils/client.js";
 import type { CommandOptions, ListResult, OutputSchema, CommandError } from "../../output/index.js";
 import { collectMultiple } from "../../utils/command-options.js";
 import { isSameOrDescendantPath } from "../../utils/paths.js";
+import { hasOpenAgentTab } from "@getpaseo/protocol/agent-labels";
 
 type FetchAgentsOptions = NonNullable<
   Parameters<Awaited<ReturnType<typeof connectToDaemon>>["fetchAgents"]>[0]
@@ -14,6 +15,7 @@ export function addLsOptions(cmd: Command): Command {
     .description("List agents. By default excludes archived agents.")
     .option("-a, --all", "Include archived agents")
     .option("-g, --global", "List agents across all directories")
+    .option("--open-tabs", "List only agents currently open in a Paseo tab")
     .option(
       "--label <key=value>",
       "Filter by label (can be used multiple times)",
@@ -117,6 +119,8 @@ export interface AgentLsOptions extends CommandOptions {
   label?: string[];
   /** Filter by thinking option ID */
   thinking?: string;
+  /** List only agents with a live Paseo tab label. */
+  openTabs?: boolean;
 }
 
 function parseLabelFilters(labels: string[] | undefined): Record<string, string> {
@@ -157,6 +161,13 @@ export function buildAgentLsFetchOptions(
     fetchOptions.filter = daemonFilter;
   }
   return fetchOptions;
+}
+
+export function filterAgentsByOpenTab<T extends Pick<AgentSnapshotPayload, "labels">>(
+  agents: T[],
+  openTabs: boolean | undefined,
+): T[] {
+  return openTabs ? agents.filter((agent) => hasOpenAgentTab(agent.labels)) : agents;
 }
 
 /**
@@ -200,6 +211,8 @@ export async function runLsCommand(
     if (options.cwd) {
       agents = agents.filter((a) => isSameOrDescendantPath(options.cwd!, a.cwd));
     }
+
+    agents = filterAgentsByOpenTab(agents, options.openTabs);
 
     // Apply label filtering only when explicitly requested.
     if (Object.keys(labelFilters).length > 0) {

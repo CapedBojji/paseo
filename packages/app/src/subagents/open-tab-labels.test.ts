@@ -18,7 +18,7 @@ function agent(input: { id: string; parentAgentId?: string | null; open?: boolea
 }
 
 describe("getAgentTabsNeedingOpenLabel", () => {
-  it("marks every present parented tab, regardless of tab order or focus", () => {
+  it("marks every present agent tab, regardless of parent, tab order, or focus", () => {
     const agents = new Map([
       ["background-child", agent({ id: "background-child", parentAgentId: "parent" })],
       ["focused-child", agent({ id: "focused-child", parentAgentId: "parent" })],
@@ -32,7 +32,7 @@ describe("getAgentTabsNeedingOpenLabel", () => {
         label,
         pendingAgentIds: new Set(),
       }),
-    ).toEqual(["background-child", "focused-child"]);
+    ).toEqual(["background-child", "root", "focused-child"]);
   });
 
   it("skips tabs already marked or currently being marked", () => {

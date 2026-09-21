@@ -2023,6 +2023,10 @@ export const en = {
       title: "Editor",
       vimKeybindings: "Vim keybindings",
       vimHint: "Applies to source files on web and desktop.",
+      openInNeovim: "Open Explorer files in Neovim",
+      openInNeovimHint: "Open or reuse a Neovim terminal when you select a file in Explorer.",
+      openInNeovimFailed: "Could not open the file in Neovim.",
+      openInNeovimRequiresHost: "Update the Paseo host to open Explorer files in Neovim.",
     },
     notifications: {
       title: "Notifications",

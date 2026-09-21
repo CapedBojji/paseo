@@ -2011,6 +2011,10 @@ export const es: TranslationResources = {
       title: "Editor",
       vimKeybindings: "Atajos de Vim",
       vimHint: "Se aplica a archivos fuente en web y escritorio.",
+      openInNeovim: "Abrir archivos del Explorador en Neovim",
+      openInNeovimHint: "Abre o reutiliza una terminal de Neovim al seleccionar un archivo.",
+      openInNeovimFailed: "No se pudo abrir el archivo en Neovim.",
+      openInNeovimRequiresHost: "Actualiza el host de Paseo para abrir archivos en Neovim.",
     },
     notifications: {
       title: "Notificaciones",

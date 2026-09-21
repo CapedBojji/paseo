@@ -1963,6 +1963,10 @@ export const ar: TranslationResources = {
       title: "المحرر",
       vimKeybindings: "اختصارات Vim",
       vimHint: "تنطبق على ملفات المصدر في الويب وسطح المكتب.",
+      openInNeovim: "فتح ملفات المستكشف في Neovim",
+      openInNeovimHint: "افتح طرفية Neovim أو أعد استخدامها عند تحديد ملف في المستكشف.",
+      openInNeovimFailed: "تعذر فتح الملف في Neovim.",
+      openInNeovimRequiresHost: "حدّث مضيف Paseo لفتح ملفات المستكشف في Neovim.",
     },
     notifications: {
       title: "الإشعارات",

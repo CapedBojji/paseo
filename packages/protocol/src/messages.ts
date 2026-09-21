@@ -2929,6 +2929,15 @@ export const CreateTerminalRequestSchema = z.object({
   requestId: z.string(),
 });
 
+export const EditorNeovimOpenRequestSchema = z.object({
+  type: z.literal("editor.neovim.open.request"),
+  workspaceId: z.string().min(1),
+  cwd: z.string().min(1),
+  path: z.string().min(1),
+  line: z.number().int().positive().optional(),
+  requestId: z.string(),
+});
+
 export const RenameTerminalRequestSchema = z.object({
   type: z.literal("terminal.rename.request"),
   terminalId: z.string(),
@@ -3325,6 +3334,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   SubscribeTerminalsRequestSchema,
   UnsubscribeTerminalsRequestSchema,
   CreateTerminalRequestSchema,
+  EditorNeovimOpenRequestSchema,
   RenameTerminalRequestSchema,
   StartWorkspaceScriptRequestSchema,
   WorkspaceScriptListRequestSchema,
@@ -3543,6 +3553,8 @@ export const ServerInfoStatusPayloadSchema = z
         workspaceSetupRun: z.boolean().optional(),
         // COMPAT(workspaceTerminals): added in v0.8.0, remove gate after 2027-09-05.
         workspaceTerminals: z.boolean().optional(),
+        // COMPAT(neovimEditor): added in v0.8.0, remove gate after 2027-03-20.
+        neovimEditor: z.boolean().optional(),
         // COMPAT(checkoutForgeSetAutoMerge): added in v0.2.0-beta.1. Remove the
         // feature gate and checkoutGithubSetAutoMerge fallback after 2027-01-17
         // once the supported daemon floor is >= v0.2.0.
@@ -6320,6 +6332,16 @@ export const CreateTerminalResponseSchema = z.object({
   }),
 });
 
+export const EditorNeovimOpenResponseSchema = z.object({
+  type: z.literal("editor.neovim.open.response"),
+  payload: z.object({
+    requestId: z.string(),
+    terminalId: z.string().nullable(),
+    created: z.boolean(),
+    error: z.string().nullable(),
+  }),
+});
+
 export const RenameTerminalResponseSchema = z.object({
   type: z.literal("terminal.rename.response"),
   payload: z.object({
@@ -6910,6 +6932,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   ListTerminalsResponseSchema,
   TerminalsChangedSchema,
   CreateTerminalResponseSchema,
+  EditorNeovimOpenResponseSchema,
   RenameTerminalResponseSchema,
   SubscribeTerminalResponseSchema,
   KillTerminalResponseSchema,
@@ -7365,6 +7388,8 @@ export type UnsubscribeTerminalsRequest = z.infer<typeof UnsubscribeTerminalsReq
 export type TerminalsChanged = z.infer<typeof TerminalsChangedSchema>;
 export type CreateTerminalRequest = z.infer<typeof CreateTerminalRequestSchema>;
 export type CreateTerminalResponse = z.infer<typeof CreateTerminalResponseSchema>;
+export type EditorNeovimOpenRequest = z.infer<typeof EditorNeovimOpenRequestSchema>;
+export type EditorNeovimOpenResponse = z.infer<typeof EditorNeovimOpenResponseSchema>;
 export type RenameTerminalRequest = z.infer<typeof RenameTerminalRequestSchema>;
 export type RenameTerminalResponse = z.infer<typeof RenameTerminalResponseSchema>;
 export type StartWorkspaceScriptRequest = z.infer<typeof StartWorkspaceScriptRequestSchema>;
