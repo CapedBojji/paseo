@@ -67,6 +67,16 @@ describe("serializeAgentStreamEvent", () => {
         type: "user_message",
         text: "<paseo-instructions>\nX\n</paseo-instructions>\n\nHello",
         messageId: "m1",
+        attachments: [
+          {
+            type: "uploaded_file",
+            id: "upload-1",
+            fileName: "demo.mp4",
+            mimeType: "video/mp4",
+            size: 1234,
+            path: "/tmp/demo.mp4",
+          },
+        ],
       },
     };
 
@@ -77,6 +87,7 @@ describe("serializeAgentStreamEvent", () => {
     }
     expect(serialized.item.text).toBe(event.item.text);
     expect(serialized.item.messageId).toBe("m1");
+    expect(serialized.item.attachments).toEqual(event.item.attachments);
   });
 
   test("passes canonical tool_call payloads through unchanged", () => {

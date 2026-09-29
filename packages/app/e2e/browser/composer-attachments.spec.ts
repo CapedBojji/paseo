@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
 import { clickNewChat } from "../support/helpers/launcher";
 import { expectComposerVisible } from "../support/helpers/composer";
@@ -39,6 +40,7 @@ import { hasGithubAuth, createTempGithubRepo } from "../support/helpers/github-f
 import { getServerId } from "../support/helpers/server-id";
 import { openFileExplorer } from "../support/helpers/file-explorer";
 import { attachFileFromMenu, controlFileUploadCompletion } from "../support/helpers/composer";
+import { openAgentRoute, seedMockAgentWorkspace } from "../support/helpers/mock-agent";
 
 const MINIMAL_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
@@ -46,13 +48,95 @@ const MINIMAL_PNG = Buffer.from(
 );
 
 const TEST_IMAGE = { name: "test.png", mimeType: "image/png", buffer: MINIMAL_PNG };
+const TEST_VIDEO_NAME = "video-ui-test.mp4";
+const TEST_VIDEO_PATH = "e2e/support/fixtures/video-ui-test.mp4";
 const TEST_JSON = {
   name: "config.json",
   mimeType: "application/json",
   buffer: Buffer.from(JSON.stringify({ composer: "drop" })),
 };
 
+async function readVideoState(page: Page) {
+  return await page.locator("video").evaluate((video) => {
+    const player = video as HTMLVideoElement;
+    return {
+      videoWidth: player.videoWidth,
+      videoHeight: player.videoHeight,
+      currentTime: player.currentTime,
+    };
+  });
+}
+
+async function expectVideoPlayback(page: Page): Promise<void> {
+  const video = page.locator("video");
+  await expect.poll(async () => (await readVideoState(page)).videoWidth).toBeGreaterThan(0);
+  await expect.poll(async () => (await readVideoState(page)).videoHeight).toBeGreaterThan(0);
+  const startTime = (await readVideoState(page)).currentTime;
+  await video.evaluate(async (element) => {
+    const player = element as HTMLVideoElement;
+    player.muted = true;
+    await player.play();
+  });
+  await expect
+    .poll(async () => (await readVideoState(page)).currentTime)
+    .toBeGreaterThan(startTime + 0.15);
+}
+
 test.describe("Composer attachments", () => {
+  test("uploads, plays, submits, and restores a video attachment", async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    const agent = await seedMockAgentWorkspace({
+      repoPrefix: `attach-video-${testInfo.workerIndex}-`,
+      title: "Video attachment regression",
+    });
+    try {
+      await openAgentRoute(page, { workspaceId: agent.workspaceId, agentId: agent.agentId });
+      await expectComposerVisible(page);
+      await expectAgentIdle(page);
+
+      const chooserPromise = page.waitForEvent("filechooser", { timeout: 10_000 });
+      await openAttachmentMenu(page);
+      await page.getByRole("menuitem", { name: "Add video", exact: true }).click();
+      await (await chooserPromise).setFiles(TEST_VIDEO_PATH);
+
+      const composerPill = page.getByTestId("composer-file-attachment-pill");
+      await expect(composerPill).toContainText(TEST_VIDEO_NAME);
+      await expect(composerPill).toHaveAccessibleName("Open video attachment");
+      await composerPill.click();
+      await expect(page.getByTestId("attachment-video-viewer-close")).toBeVisible();
+      await expect(page.locator("video")).toHaveCount(1);
+      await expectVideoPlayback(page);
+      await page.getByTestId("attachment-video-viewer-close").click();
+
+      const prompt = "Keep this video attachment";
+      const composer = page.getByRole("textbox", { name: "Message agent..." }).first();
+      await composer.fill(prompt);
+      await composer.press("Enter");
+      const userMessage = page.getByTestId("user-message").filter({ hasText: prompt }).last();
+      await expect(userMessage).toBeVisible();
+      await expect(
+        userMessage.getByRole("button", { name: "Open video attachment" }),
+      ).toBeVisible();
+      await expect(userMessage).toHaveAttribute("aria-busy", "false", { timeout: 30_000 });
+      await userMessage.getByRole("button", { name: "Open video attachment" }).click();
+      await expect(page.getByTestId("attachment-video-viewer-close")).toBeVisible();
+      await expectVideoPlayback(page);
+      await page.getByTestId("attachment-video-viewer-close").click();
+
+      await page.reload();
+      const restoredMessage = page.getByTestId("user-message").filter({ hasText: prompt }).last();
+      const restoredVideo = restoredMessage.getByRole("button", {
+        name: "Open video attachment",
+      });
+      await expect(restoredVideo).toBeVisible({ timeout: 30_000 });
+      await restoredVideo.click();
+      await expect(page.getByTestId("attachment-video-viewer-close")).toBeVisible();
+      await expectVideoPlayback(page);
+    } finally {
+      await agent.cleanup();
+    }
+  });
+
   test("selected file shows a loading attachment until upload is acknowledged", async ({
     page,
     withWorkspace,

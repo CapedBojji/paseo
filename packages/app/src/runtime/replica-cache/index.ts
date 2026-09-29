@@ -2,6 +2,8 @@ import { z } from "zod";
 import {
   AgentStatusSchema,
   AgentTimelineItemPayloadSchema,
+  type UploadedFileAttachment,
+  UploadedFileAttachmentSchema,
   WorkspaceGitHubRuntimePayloadSchema,
 } from "@getpaseo/protocol/messages";
 import { AgentProviderSchema } from "@getpaseo/protocol/provider-manifest";
@@ -118,6 +120,7 @@ const StoredTimelineItemSchema = z.discriminatedUnion("kind", [
     clientMessageId: z.string().optional(),
     messageId: z.string().optional(),
     text: z.string(),
+    attachments: z.array(UploadedFileAttachmentSchema).optional(),
   }),
   z.strictObject({
     ...TimelineItemBaseShape,
@@ -427,6 +430,11 @@ function serializeTimelineItem(item: StreamItem): StoredTimelineItem | null {
         ...(item.clientMessageId ? { clientMessageId: item.clientMessageId } : {}),
         ...(item.messageId ? { messageId: item.messageId } : {}),
         text: item.text,
+        ...(item.attachments?.every(
+          (attachment): attachment is UploadedFileAttachment => attachment.type === "uploaded_file",
+        ) && item.attachments.length > 0
+          ? { attachments: item.attachments }
+          : {}),
       };
     case "assistant_message":
       return {
@@ -517,6 +525,7 @@ function deserializeBuiltinTimelineItem(
         ...(item.clientMessageId ? { clientMessageId: item.clientMessageId } : {}),
         ...(item.messageId ? { messageId: item.messageId } : {}),
         text: item.text,
+        ...(item.attachments ? { attachments: item.attachments } : {}),
       };
     case "assistant_message":
       return {
@@ -725,7 +734,10 @@ function serializeProject(project: ProjectDescriptor): StoredProject {
 function isTimelineItemStoredLosslessly(item: StreamItem): boolean {
   switch (item.kind) {
     case "user_message":
-      return (item.images?.length ?? 0) === 0 && (item.attachments?.length ?? 0) === 0;
+      return (
+        (item.images?.length ?? 0) === 0 &&
+        (item.attachments?.every((attachment) => attachment.type === "uploaded_file") ?? true)
+      );
     case "tool_call":
       return item.payload.source === "agent";
     default:

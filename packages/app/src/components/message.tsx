@@ -58,7 +58,7 @@ import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "reac
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
 import { MarkdownRenderer, type MarkdownStyles } from "@/components/markdown/renderer";
 import type { TaskActivity, TodoEntry, UserMessageImageAttachment } from "@/types/stream";
-import type { AgentAttachment } from "@getpaseo/protocol/messages";
+import type { AgentAttachment, UploadedFileAttachment } from "@getpaseo/protocol/messages";
 import type { ToolCallDetail } from "@getpaseo/protocol/agent-types";
 import { buildToolCallPresentation } from "@/tool-calls/presentation";
 import { resolveToolCallIcon } from "@/utils/tool-call-icon";
@@ -98,6 +98,11 @@ import {
   AttachmentThumbnail,
 } from "@/components/attachment-pill";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
+import {
+  AttachmentVideoViewer,
+  type AttachmentVideoSource,
+} from "@/components/attachment-video-viewer";
+import { isVideoFile } from "@/attachments/file-types";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import { isWeb, isNative } from "@/constants/platform";
 import type { AgentCapabilityFlags } from "@getpaseo/protocol/agent-types";
@@ -421,6 +426,32 @@ function UserMessageImagePill({ image, onOpen, accessibilityLabel }: UserMessage
   );
 }
 
+function UserMessageAttachmentPill({
+  attachment,
+  onOpenVideo,
+}: {
+  attachment: AgentAttachment;
+  onOpenVideo?: (attachment: UploadedFileAttachment) => void;
+}) {
+  const { t } = useTranslation();
+  const content = getAgentAttachmentPillContent(attachment, t);
+  const isVideo =
+    attachment.type === "uploaded_file" &&
+    isVideoFile({ mimeType: attachment.mimeType, path: attachment.fileName });
+  const handlePress = useCallback(() => {
+    if (attachment.type === "uploaded_file") onOpenVideo?.(attachment);
+  }, [attachment, onOpenVideo]);
+
+  return (
+    <AttachmentFrame
+      onPress={isVideo && onOpenVideo ? handlePress : undefined}
+      accessibilityLabel={isVideo ? t("composer.attachments.openVideo") : undefined}
+    >
+      <AttachmentLabel icon={content.icon} title={content.title} subtitle={content.subtitle} />
+    </AttachmentFrame>
+  );
+}
+
 const MESSAGE_TEXT_DATASET = { messageText: "true" };
 
 export const UserMessage = memo(function UserMessage({
@@ -442,10 +473,23 @@ export const UserMessage = memo(function UserMessage({
   const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [lightboxMetadata, setLightboxMetadata] = useState<UserMessageImageAttachment | null>(null);
+  const [videoAttachment, setVideoAttachment] = useState<UploadedFileAttachment | null>(null);
   const handleLightboxClose = useCallback(() => setLightboxMetadata(null), []);
   const lightboxSource = useMemo<ImageLightboxSource | null>(
     () => (lightboxMetadata ? { type: "attachment", metadata: lightboxMetadata } : null),
     [lightboxMetadata],
+  );
+  const videoSource = useMemo<AttachmentVideoSource | null>(
+    () =>
+      videoAttachment && client && serverId
+        ? { attachment: videoAttachment, client, serverId }
+        : null,
+    [client, serverId, videoAttachment],
+  );
+  const handleVideoViewerClose = useCallback(() => setVideoAttachment(null), []);
+  const handleOpenVideo = useCallback(
+    (attachment: UploadedFileAttachment) => setVideoAttachment(attachment),
+    [],
   );
   const resolvedDisableOuterSpacing = useDisableOuterSpacing(disableOuterSpacing);
   const hasText = message.trim().length > 0;
@@ -526,17 +570,12 @@ export const UserMessage = memo(function UserMessage({
           {hasAttachments ? (
             <View style={attachmentPreviewContainerStyle}>
               {attachments.map((attachment, index) => {
-                const content = getAgentAttachmentPillContent(attachment, t);
                 return (
-                  <AttachmentFrame
+                  <UserMessageAttachmentPill
                     key={`${attachment.type}:${"number" in attachment ? attachment.number : index}`}
-                  >
-                    <AttachmentLabel
-                      icon={content.icon}
-                      title={content.title}
-                      subtitle={content.subtitle}
-                    />
-                  </AttachmentFrame>
+                    attachment={attachment}
+                    onOpenVideo={client && serverId ? handleOpenVideo : undefined}
+                  />
                 );
               })}
             </View>
@@ -573,6 +612,7 @@ export const UserMessage = memo(function UserMessage({
         ) : null}
       </View>
       <AttachmentLightbox source={lightboxSource} onClose={handleLightboxClose} />
+      <AttachmentVideoViewer source={videoSource} onClose={handleVideoViewerClose} />
     </View>
   );
 });

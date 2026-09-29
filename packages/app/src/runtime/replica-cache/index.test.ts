@@ -7,7 +7,7 @@ import {
 } from "@/stores/session-store";
 import type { StreamItem } from "@/types/stream";
 import { normalizeAgentSnapshot } from "@/utils/agent-snapshots";
-import { ReplicaCache } from ".";
+import { type CachedTimeline, ReplicaCache } from ".";
 import type { DirectoryCheckpoint } from "@/runtime/replica-cache";
 import type { ReplicaHostRows, ReplicaRow, ReplicaRowChanges, ReplicaRowStore } from "./row-store";
 
@@ -273,6 +273,39 @@ describe("ReplicaCache", () => {
     expect(restoredDirectory.projects.get("project-1")?.projectDisplayName).toBe("Paseo");
     expect(restoredDirectory.checkpoint).toEqual({ agents: { generation: "g", afterSeq: 12 } });
     expect(restoredTimeline).toEqual(timeline());
+  });
+
+  it("round-trips canonical uploaded video attachments", async () => {
+    const storage = new MemoryStorage();
+    const writer = createCache(storage);
+    const cachedTimeline = {
+      agentId: "agent-1",
+      items: [
+        {
+          kind: "user_message",
+          id: "message-video-1",
+          text: "",
+          timestamp: new Date("2026-07-18T08:02:00.000Z"),
+          timelineCursor: { epoch: "epoch-1", seq: 12 },
+          attachments: [
+            {
+              type: "uploaded_file",
+              id: "upload-video-1",
+              fileName: "demo.mp4",
+              mimeType: "video/mp4",
+              size: 1234,
+              path: "/tmp/demo.mp4",
+            },
+          ],
+        },
+      ],
+      range: { epoch: "epoch-1", startSeq: 12, endSeq: 12 },
+      hasOlder: true,
+    } satisfies CachedTimeline;
+    writer.commitTimeline(SERVER_ID, "agent-1", cachedTimeline);
+    await writer.flush();
+
+    expect(await createCache(storage).readTimeline(SERVER_ID, "agent-1")).toEqual(cachedTimeline);
   });
 
   it("preserves pending timeline updates across directory baseline replacement", async () => {

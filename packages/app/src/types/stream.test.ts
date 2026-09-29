@@ -1631,6 +1631,33 @@ describe("turn lifecycle events", () => {
     );
   });
 
+  it("hydrates uploaded video attachments from canonical timeline rows", () => {
+    const attachment = {
+      type: "uploaded_file" as const,
+      id: "upload-1",
+      fileName: "demo.mp4",
+      mimeType: "video/mp4",
+      size: 1234,
+      path: "/tmp/demo.mp4",
+    };
+    const state = hydrateStreamState([
+      {
+        event: {
+          type: "timeline",
+          provider: "codex",
+          item: { type: "user_message", text: "", attachments: [attachment] },
+        },
+        timestamp: new Date("2025-01-01T13:00:00Z"),
+      },
+    ]);
+
+    assert.strictEqual(state.length, 1);
+    const userMessage = state[0];
+    invariant(userMessage?.kind === "user_message");
+    assert.strictEqual(userMessage.text, "");
+    assert.deepStrictEqual(userMessage.attachments, [attachment]);
+  });
+
   it("does not materialize turn_started events during hydration", () => {
     const startedAt = new Date("2025-01-01T14:00:00Z");
     const state = hydrateStreamState([

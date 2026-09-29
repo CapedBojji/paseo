@@ -39,6 +39,7 @@ import {
   Image as ImageIcon,
   ClipboardPaste,
   Paperclip,
+  Video,
 } from "lucide-react-native";
 import * as Clipboard from "expo-clipboard";
 import { FOOTER_HEIGHT, MAX_CONTENT_WIDTH } from "@/constants/layout";
@@ -118,7 +119,7 @@ import { useAppSettings } from "@/hooks/use-settings";
 import { RenderProfile } from "@/utils/render-profiler";
 import { AfterPaintPublication } from "@/composer/after-paint-publication";
 import { isWeb, isNative } from "@/constants/platform";
-import type { ForgeSearchItem } from "@getpaseo/protocol/messages";
+import type { ForgeSearchItem, UploadedFileAttachment } from "@getpaseo/protocol/messages";
 import type {
   AttachmentMetadata,
   ComposerAttachment,
@@ -131,7 +132,7 @@ import { resolveComposerAttachmentSubmitFormat } from "@/composer/attachments/su
 import { composerWorkspaceAttachment } from "@/composer/attachments/workspace";
 import { useWorkspaceAttachmentsForScopes } from "@/attachments/workspace-attachments-store";
 import { droppedItemsToSelectedFiles } from "@/composer/attachments/drop";
-import { getFileTypeLabel } from "@/attachments/file-types";
+import { getFileTypeLabel, isVideoFile } from "@/attachments/file-types";
 import { Combobox, ComboboxItem, type ComboboxOption } from "@/components/ui/combobox";
 import {
   AttachmentFrame,
@@ -140,6 +141,10 @@ import {
   AttachmentThumbnail,
 } from "@/components/attachment-pill";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
+import {
+  AttachmentVideoViewer,
+  type AttachmentVideoSource,
+} from "@/components/attachment-video-viewer";
 import { openExternalUrl } from "@/utils/open-external-url";
 import { useIsDictationReady } from "@/hooks/use-is-dictation-ready";
 import { useForgeSearchQuery } from "@/git/use-forge-search-query";
@@ -352,6 +357,7 @@ interface RenderAttachmentTrayArgs {
   handleRemoveAttachment: (index: number) => void;
   labels: {
     openImage: string;
+    openVideo: string;
     removeImage: string;
     removeFile: string;
     openGithub: (kind: string, numberLabel: string) => string;
@@ -454,6 +460,8 @@ function renderComposerAttachmentPill(args: RenderComposerAttachmentPillArgs): R
         attachment={attachment}
         index={index}
         disabled={disabled}
+        onOpen={onOpen}
+        openVideoLabel={labels.openVideo}
         onRemove={onRemove}
         removeLabel={labels.removeFile}
       />
@@ -825,7 +833,9 @@ interface FileAttachmentPillProps {
   attachment: Extract<ComposerAttachment, { kind: "file" }>;
   index: number;
   disabled: boolean;
+  onOpen: (attachment: ComposerAttachment) => void;
   onRemove: (index: number) => void;
+  openVideoLabel: string;
   removeLabel: string;
 }
 
@@ -833,20 +843,29 @@ function FileAttachmentPill({
   attachment,
   index,
   disabled,
+  onOpen,
   onRemove,
+  openVideoLabel,
   removeLabel,
 }: FileAttachmentPillProps) {
   const { t } = useTranslation();
   const handleRemove = useCallback(() => {
     onRemove(index);
   }, [onRemove, index]);
+  const isVideo = isVideoFile({
+    mimeType: attachment.attachment.mimeType,
+    path: attachment.attachment.fileName,
+  });
+  const handleOpen = useCallback(() => {
+    if (isVideo) onOpen(attachment);
+  }, [attachment, isVideo, onOpen]);
   const fileName = attachment.attachment.fileName;
   return (
     <AttachmentPill
       testID="composer-file-attachment-pill"
-      onOpen={noopCallback}
+      onOpen={handleOpen}
       onRemove={handleRemove}
-      openAccessibilityLabel={fileName}
+      openAccessibilityLabel={isVideo ? openVideoLabel : fileName}
       removeAccessibilityLabel={removeLabel}
       disabled={disabled}
     >
@@ -1386,6 +1405,7 @@ function ComposerContentImpl({
   const [isGithubPickerOpen, setIsGithubPickerOpen] = useState(false);
   const [githubSearchQuery, setGithubSearchQuery] = useState("");
   const [lightboxMetadata, setLightboxMetadata] = useState<AttachmentMetadata | null>(null);
+  const [videoAttachment, setVideoAttachment] = useState<UploadedFileAttachment | null>(null);
   const attachButtonRef = useRef<View | null>(null);
   const messageInputRef = useRef<MessageInputRef>(null);
   const pluginAttachments = usePluginAttachmentPicker({
@@ -1838,6 +1858,23 @@ function ComposerContentImpl({
     }
   }, [client, pickFiles, t, uploadSelectedFiles]);
 
+  const handlePickVideo = useCallback(async () => {
+    if (!client) {
+      toastErrorRef.current(t("composer.errors.daemonClientDisconnected"));
+      return;
+    }
+    try {
+      const files = await pickFiles({ videoOnly: true });
+      if (!files) return;
+      await uploadSelectedFiles(files);
+    } catch (error) {
+      console.error("[Composer] Failed to upload video:", error);
+      toastErrorRef.current(
+        error instanceof Error ? error.message : t("composer.errors.uploadFailed"),
+      );
+    }
+  }, [client, pickFiles, t, uploadSelectedFiles]);
+
   const handleGenericFilesDropped = useCallback(
     async (items: DroppedItem[]) => {
       try {
@@ -1877,6 +1914,16 @@ function ComposerContentImpl({
 
   const handleOpenAttachment = useCallback(
     (attachment: ComposerAttachment) => {
+      if (
+        attachment.kind === "file" &&
+        isVideoFile({
+          mimeType: attachment.attachment.mimeType,
+          path: attachment.attachment.fileName,
+        })
+      ) {
+        setVideoAttachment(attachment.attachment);
+        return;
+      }
       openComposerAttachment({
         attachment,
         setLightboxMetadata,
@@ -2177,6 +2224,14 @@ function ComposerContentImpl({
     }
     items.push(
       {
+        id: "video",
+        label: t("composer.attachments.addVideo"),
+        icon: <ThemedVideo size={ICON_SIZE.md} uniProps={iconForegroundMutedMapping} />,
+        onSelect: () => {
+          void handlePickVideo();
+        },
+      },
+      {
         id: "github",
         label: t("composer.attachments.addIssueOrPr", {
           context: forgePresentation.changeRequestContext,
@@ -2202,6 +2257,7 @@ function ComposerContentImpl({
     handlePasteImage,
     handlePickFile,
     handlePickImage,
+    handlePickVideo,
     pluginAttachments.menuItems,
     t,
   ]);
@@ -2266,6 +2322,11 @@ function ComposerContentImpl({
     () => (lightboxMetadata ? { type: "attachment", metadata: lightboxMetadata } : null),
     [lightboxMetadata],
   );
+  const videoSource = useMemo<AttachmentVideoSource | null>(
+    () => (videoAttachment && client ? { attachment: videoAttachment, client, serverId } : null),
+    [client, serverId, videoAttachment],
+  );
+  const handleVideoViewerClose = useCallback(() => setVideoAttachment(null), []);
 
   const handleGithubPickerOpenChange = useCallback(
     (open: boolean) => {
@@ -2314,6 +2375,7 @@ function ComposerContentImpl({
         handleRemoveAttachment,
         labels: {
           openImage: t("composer.attachments.openImage"),
+          openVideo: t("composer.attachments.openVideo"),
           removeImage: t("composer.attachments.removeImage"),
           removeFile: t("composer.attachments.removeFile"),
           openGithub: (kind: string, numberLabel: string) =>
@@ -2413,6 +2475,7 @@ function ComposerContentImpl({
       />
       <View style={animatedStaticStyles.container}>
         <AttachmentLightbox source={lightboxSource} onClose={handleLightboxClose} />
+        <AttachmentVideoViewer source={videoSource} onClose={handleVideoViewerClose} />
         {/* Input area */}
         <View style={inputAreaContainerStyle}>
           <View style={styles.inputAreaContent}>
@@ -2662,6 +2725,7 @@ const ThemedPaperclip = withUnistyles(Paperclip);
 const ThemedImageIcon = withUnistyles(ImageIcon);
 const ThemedClipboardPaste = withUnistyles(ClipboardPaste);
 const ThemedFileText = withUnistyles(FileText);
+const ThemedVideo = withUnistyles(Video);
 const iconForegroundMapping = (theme: Theme) => ({ color: theme.colors.foreground });
 const iconForegroundMutedMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const iconAccentForegroundMapping = (theme: Theme) => ({ color: theme.colors.accentForeground });

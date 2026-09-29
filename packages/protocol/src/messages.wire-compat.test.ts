@@ -163,6 +163,37 @@ describe("wire schema compatibility", () => {
     });
   });
 
+  test("uploaded file timeline attachments are optional on the wire", () => {
+    const legacy = { type: "user_message", text: "old daemon shape" };
+    expect(AgentTimelineItemPayloadSchema.parse(legacy)).toEqual(legacy);
+
+    const current = {
+      type: "user_message",
+      text: "Watch this",
+      attachments: [
+        {
+          type: "uploaded_file",
+          id: "upload-1",
+          fileName: "demo.mp4",
+          mimeType: "video/mp4",
+          size: 1234,
+          path: "/tmp/demo.mp4",
+        },
+      ],
+    };
+    expect(AgentTimelineItemPayloadSchema.parse(current)).toEqual(current);
+    const legacySchema = z.object({
+      type: z.literal("user_message"),
+      text: z.string(),
+      messageId: z.string().optional(),
+      clientMessageId: z.string().optional(),
+    });
+    expect(legacySchema.parse(current)).toEqual({
+      type: "user_message",
+      text: "Watch this",
+    });
+  });
+
   test("task progress fields are optional on the wire", () => {
     expect(
       AgentTimelineItemPayloadSchema.parse({

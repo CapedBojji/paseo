@@ -5,7 +5,11 @@ import type {
   ToolCallDetail,
 } from "@getpaseo/protocol/agent-types";
 import { timelineItemIdentity } from "@getpaseo/protocol/timeline-identity";
-import type { AgentAttachment, AgentStreamEventPayload } from "@getpaseo/protocol/messages";
+import type {
+  AgentAttachment,
+  AgentStreamEventPayload,
+  UploadedFileAttachment,
+} from "@getpaseo/protocol/messages";
 import type { AttachmentMetadata } from "@/attachments/types";
 import { extractTaskEntriesFromToolCall } from "../utils/tool-call-parsers";
 
@@ -858,6 +862,19 @@ function normalizeChunk(text: string): { chunk: string; hasContent: boolean } {
   return { chunk, hasContent: /\S/.test(chunk) };
 }
 
+function normalizeUserMessagePresentation(
+  text: string,
+  attachments?: UploadedFileAttachment[],
+): { chunk: string; hasPresentation: boolean; identitySeed: string } {
+  const normalized = normalizeChunk(text);
+  const attachmentSeed = attachments?.map((attachment) => attachment.id).join(":") ?? "";
+  return {
+    chunk: normalized.chunk,
+    hasPresentation: normalized.hasContent || attachmentSeed.length > 0,
+    identitySeed: normalized.chunk.trim() || attachmentSeed || normalized.chunk,
+  };
+}
+
 function markThoughtReady(item: ThoughtItem): ThoughtItem {
   if (item.status === "ready") {
     return item;
@@ -890,21 +907,25 @@ function appendUserMessage(
   clientMessageId?: string,
   timelineCursor?: TimelinePosition,
   turnId?: string,
+  attachments?: UploadedFileAttachment[],
 ): StreamItem[] {
-  const { chunk, hasContent } = normalizeChunk(text);
-  if (!hasContent) {
+  const { chunk, hasPresentation, identitySeed } = normalizeUserMessagePresentation(
+    text,
+    attachments,
+  );
+  if (!hasPresentation) {
     return state;
   }
 
-  const chunkSeed = chunk.trim() || chunk;
   const nextItem = createUserMessage({
-    id: messageId ?? createUniqueTimelineId(state, "user", chunkSeed, timestamp),
+    id: messageId ?? createUniqueTimelineId(state, "user", identitySeed, timestamp),
     clientMessageId,
     messageId,
     timelineCursor,
     turnId,
     text: chunk,
     timestamp,
+    attachments,
   });
   return upsertUserMessage(state, nextItem);
 }
@@ -1512,6 +1533,7 @@ function reduceTimelineEvent(
           item.clientMessageId,
           timelineCursor,
           event.turnId,
+          item.attachments,
         ),
       );
     case "assistant_message":
@@ -1871,27 +1893,31 @@ function applyCanonicalUserMessageEvent(params: {
 }): ApplyStreamEventResult | null {
   const { tail, head, event, timestamp, timelineCursor, unmatchedInsert = "tail" } = params;
   if (event.type !== "timeline" || event.item.type !== "user_message") return null;
-  const normalized = normalizeChunk(event.item.text);
+  const { chunk, hasPresentation, identitySeed } = normalizeUserMessagePresentation(
+    event.item.text,
+    event.item.attachments,
+  );
 
   const flushedTail = head.length > 0 ? flushHeadToTail(tail, head) : tail;
   const flushedHead = head.length > 0 ? [] : head;
   const canonical = createUserMessage({
     id:
       event.item.messageId ??
-      createUniqueTimelineId([...tail, ...head], "user", normalized.chunk.trim(), timestamp),
+      createUniqueTimelineId([...tail, ...head], "user", identitySeed, timestamp),
     messageId: event.item.messageId,
     clientMessageId: event.item.clientMessageId,
     turnId: event.turnId,
     timelineCursor,
-    text: normalized.chunk,
+    text: chunk,
     timestamp,
+    attachments: event.item.attachments,
   });
   if (unmatchedInsert === "head") {
     const reconciled = upsertUserMessageAcrossStream({
       tail,
       head,
       message: canonical,
-      insert: normalized.hasContent ? "head" : "none",
+      insert: hasPresentation ? "head" : "none",
       presentation: "existing",
     });
     const reconciledTail = canonical.clientMessageId
@@ -1919,7 +1945,7 @@ function applyCanonicalUserMessageEvent(params: {
           : [],
     };
   }
-  const reconciled = placeCanonicalUserMessageAtTail(flushedTail, canonical, normalized.hasContent);
+  const reconciled = placeCanonicalUserMessageAtTail(flushedTail, canonical, hasPresentation);
   const reconciledTail = canonical.clientMessageId
     ? reconcileCanonicalUserTurnMembership(
         reconciled.items,

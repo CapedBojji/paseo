@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   getMimeTypeFromPath,
   getRasterImageMimeTypeFromPath,
+  isVideoFile,
   isRasterImageFile,
   isRasterImageMimeType,
   isRasterImagePath,
   RASTER_IMAGE_FILE_EXTENSIONS,
   resolveRasterImageMimeType,
+  resolveVideoMimeType,
 } from "./file-types";
 
 describe("attachment file types", () => {
@@ -31,6 +33,14 @@ describe("attachment file types", () => {
     expect(getMimeTypeFromPath("/tmp/report.docx")).toBe("application/octet-stream");
     expect(getMimeTypeFromPath("/tmp/runtime.log")).toBe("application/octet-stream");
     expect(getMimeTypeFromPath("/tmp/export.anything")).toBe("application/octet-stream");
+  });
+
+  it("recognizes common video files from MIME metadata or extension", () => {
+    expect(getMimeTypeFromPath("/tmp/capture.mp4")).toBe("video/mp4");
+    expect(getMimeTypeFromPath("/tmp/capture.mov")).toBe("video/quicktime");
+    expect(resolveVideoMimeType({ mimeType: "video/mp4; codecs=avc1" })).toBe("video/mp4");
+    expect(isVideoFile({ mimeType: "application/octet-stream", path: "capture.webm" })).toBe(true);
+    expect(isVideoFile({ mimeType: "application/pdf", path: "notes.pdf" })).toBe(false);
   });
 
   it("does not offer SVG in the image picker extension list", () => {

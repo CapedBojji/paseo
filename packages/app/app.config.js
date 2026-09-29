@@ -157,6 +157,7 @@ export default {
       ],
       ...buildProfile.notificationPlugins,
       "expo-audio",
+      "expo-video",
       [
         "expo-gradle-jvmargs",
         {

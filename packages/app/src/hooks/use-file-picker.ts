@@ -3,10 +3,16 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import { getDesktopHost, isElectronRuntime } from "@/desktop/host";
 import { isWeb } from "@/constants/platform";
-import { getMimeTypeFromPath } from "@/attachments/file-types";
+import { getMimeTypeFromPath, VIDEO_FILE_EXTENSIONS } from "@/attachments/file-types";
 import { readDesktopFileBytes, type SelectedFile } from "@/attachments/selected-file";
 
-async function pickFilesWithDesktopDialog(): Promise<SelectedFile[] | null> {
+export interface FilePickerOptions {
+  videoOnly?: boolean;
+}
+
+async function pickFilesWithDesktopDialog(
+  options: FilePickerOptions,
+): Promise<SelectedFile[] | null> {
   const dialog = getDesktopHost()?.dialog;
   const dialogOpen = dialog?.open;
   if (typeof dialogOpen !== "function") {
@@ -16,6 +22,9 @@ async function pickFilesWithDesktopDialog(): Promise<SelectedFile[] | null> {
   const selection = await dialogOpen({
     directory: false,
     multiple: true,
+    ...(options.videoOnly
+      ? { filters: [{ name: "Videos", extensions: [...VIDEO_FILE_EXTENSIONS] }] }
+      : {}),
   });
 
   if (!selection) {
@@ -38,11 +47,12 @@ async function pickFilesWithDesktopDialog(): Promise<SelectedFile[] | null> {
   return result;
 }
 
-function pickFilesWithWebInput(): Promise<SelectedFile[] | null> {
+function pickFilesWithWebInput(options: FilePickerOptions): Promise<SelectedFile[] | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
+    if (options.videoOnly) input.accept = "video/*";
     input.style.display = "none";
 
     input.addEventListener("change", async () => {
@@ -77,10 +87,13 @@ function pickFilesWithWebInput(): Promise<SelectedFile[] | null> {
   });
 }
 
-async function pickFilesWithDocumentPicker(): Promise<SelectedFile[] | null> {
+async function pickFilesWithDocumentPicker(
+  options: FilePickerOptions,
+): Promise<SelectedFile[] | null> {
   const result = await DocumentPicker.getDocumentAsync({
     multiple: true,
     copyToCacheDirectory: true,
+    ...(options.videoOnly ? { type: "video/*" } : {}),
   });
 
   if (result.canceled || result.assets.length === 0) {
@@ -97,29 +110,32 @@ async function pickFilesWithDocumentPicker(): Promise<SelectedFile[] | null> {
 export function useFilePicker() {
   const isPickingRef = useRef(false);
 
-  const pickFiles = useCallback(async (): Promise<SelectedFile[] | null> => {
-    if (isPickingRef.current) {
-      return null;
-    }
-    isPickingRef.current = true;
-
-    try {
-      if (isWeb && isElectronRuntime()) {
-        return await pickFilesWithDesktopDialog();
+  const pickFiles = useCallback(
+    async (options: FilePickerOptions = {}): Promise<SelectedFile[] | null> => {
+      if (isPickingRef.current) {
+        return null;
       }
+      isPickingRef.current = true;
 
-      if (isWeb) {
-        return await pickFilesWithWebInput();
+      try {
+        if (isWeb && isElectronRuntime()) {
+          return await pickFilesWithDesktopDialog(options);
+        }
+
+        if (isWeb) {
+          return await pickFilesWithWebInput(options);
+        }
+
+        return await pickFilesWithDocumentPicker(options);
+      } catch (error) {
+        console.error("[FilePicker] Failed to pick files:", error);
+        throw error;
+      } finally {
+        isPickingRef.current = false;
       }
-
-      return await pickFilesWithDocumentPicker();
-    } catch (error) {
-      console.error("[FilePicker] Failed to pick files:", error);
-      throw error;
-    } finally {
-      isPickingRef.current = false;
-    }
-  }, []);
+    },
+    [],
+  );
 
   return { pickFiles };
 }

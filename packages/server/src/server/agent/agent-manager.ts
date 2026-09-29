@@ -18,6 +18,7 @@ import {
 } from "@getpaseo/protocol/agent-labels";
 import type { Logger } from "pino";
 import type { ProviderOptions, ToolPolicy } from "@getpaseo/protocol/agent-types";
+import type { UploadedFileAttachment } from "@getpaseo/protocol/messages";
 import type { ProviderPaseoToolsPolicy } from "@getpaseo/protocol/provider-config";
 import { z } from "zod";
 import type { TerminalManager } from "../../terminal/terminal-manager.js";
@@ -115,6 +116,18 @@ function submittedPromptText(prompt: AgentPromptInput): string {
     .flatMap((block) => (block.type === "text" && !("mimeType" in block) ? [block.text] : []))
     .join("\n")
     .trim();
+}
+
+function submittedPromptUploadedFiles(
+  prompt: AgentPromptInput,
+): UploadedFileAttachment[] | undefined {
+  if (typeof prompt === "string") {
+    return undefined;
+  }
+  const attachments = prompt.filter(
+    (block): block is UploadedFileAttachment => block.type === "uploaded_file",
+  );
+  return attachments.length > 0 ? attachments : undefined;
 }
 
 export class AgentManagerShuttingDownError extends Error {
@@ -4599,10 +4612,12 @@ export class AgentManager {
     }
     this.touchUpdatedAt(agent);
     agent.lastUserMessageAt = new Date();
+    const attachments = submittedPromptUploadedFiles(prompt);
     const item: AgentTimelineItem = {
       type: "user_message",
       text: submittedPromptText(prompt),
       clientMessageId,
+      ...(attachments !== undefined ? { attachments } : {}),
       ...(options?.messageId ? { messageId: options.messageId } : {}),
     };
     this.recordAndDispatchTimelineItem(agent.id, item, agent.provider, options?.turnId, options);

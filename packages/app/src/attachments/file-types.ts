@@ -13,6 +13,15 @@ const RASTER_IMAGE_MIME_TYPE_BY_EXTENSION: Record<string, string> = {
 };
 
 const RASTER_IMAGE_MIME_TYPES = new Set(Object.values(RASTER_IMAGE_MIME_TYPE_BY_EXTENSION));
+const VIDEO_MIME_TYPE_BY_EXTENSION: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".m4v": "video/x-m4v",
+  ".mov": "video/quicktime",
+  ".webm": "video/webm",
+};
+export const VIDEO_FILE_EXTENSIONS = Object.keys(VIDEO_MIME_TYPE_BY_EXTENSION).map((extension) =>
+  extension.slice(1),
+);
 const GENERIC_FILE_MIME_TYPE = "application/octet-stream";
 
 export const RASTER_IMAGE_FILE_EXTENSIONS = Object.keys(RASTER_IMAGE_MIME_TYPE_BY_EXTENSION).map(
@@ -34,7 +43,9 @@ export function getFileTypeLabel(path: string): string | null {
 }
 
 export function getMimeTypeFromPath(path: string): string {
-  return getRasterImageMimeTypeFromPath(path) ?? GENERIC_FILE_MIME_TYPE;
+  return (
+    getRasterImageMimeTypeFromPath(path) ?? getVideoMimeTypeFromPath(path) ?? GENERIC_FILE_MIME_TYPE
+  );
 }
 
 export function getRasterImageMimeTypeFromPath(path: string): string | null {
@@ -68,4 +79,23 @@ export function isRasterImageMimeType(mimeType: string | null | undefined): bool
 
 export function isRasterImageFile(file: Pick<File, "name" | "type">): boolean {
   return resolveRasterImageMimeType({ mimeType: file.type, path: file.name }) !== null;
+}
+
+export function getVideoMimeTypeFromPath(path: string): string | null {
+  return VIDEO_MIME_TYPE_BY_EXTENSION[getFileExtension(path)] ?? null;
+}
+
+export function resolveVideoMimeType(input: {
+  mimeType?: string | null;
+  path?: string | null;
+}): string | null {
+  const normalizedMimeType = input.mimeType?.split(";", 1)[0]?.trim().toLowerCase();
+  if (normalizedMimeType?.startsWith("video/")) {
+    return normalizedMimeType;
+  }
+  return input.path ? getVideoMimeTypeFromPath(input.path) : null;
+}
+
+export function isVideoFile(input: { mimeType?: string | null; path?: string | null }): boolean {
+  return resolveVideoMimeType(input) !== null;
 }
